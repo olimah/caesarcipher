@@ -1,0 +1,148 @@
+." Manpage for caesarcipher
+.".RI [ underlined ]
+.TH caesarcipher 1 "February 2017" "caesarcipher 1.0" "Manpage for caesarcipher"
+.SH NAME
+caesarcipher \- Caesar cipher cryptography tool
+.SH SYNOPSIS
+.BR "caesarcipher " "[-s shiftvalue]"
+.br
+.BR "caesarcipher " "-d || -e [-s shiftvalue] message..."
+.br
+.BR "caesarcipher " "-d || -e [-s shiftvalue] -i inputfile [-o outputfile]"
+.SH DESCRIPTION
+caesarcipher is an implementation of the Caesar cipher algorithm over the entire set of printable ASCII characters.
+.PP
+.B \fIProgram Invocation\fR:
+caesarcipher can be invoked in the folloging three forms:
+.PP
+\fI1st Form\fR: If invoked with no other arguments, than a possible shiftvalue \fB-s\fR, the user gets dropped into a shell like
+command line enviroment, with a small set of commands, in which he can enter messages to de- or encrypt.
+.PP
+The "caesarcipher shell" which identifies itself by:
+.B "cc>"
+knows the following commands:
+.PP
+.TP
+.BR 	decrypt " decrypt the message in the message buffer or specify a new one."
+.TP
+.BR 	encrypt " encrypt the message in the message buffer or specify a new one."
+.TP
+.B 	exit
+exit caesarcipher
+.TP
+.B 	shift
+set a new shiftvalue
+.TP
+.B 	quit
+quit caesarcipher (same as exit)
+.TP
+.B 	ascii
+print the ascii table
+.TP
+.B 	help
+print the command menu
+.PP
+\fI2nd Form\fR: In this form, the utility is invoked with either the \fB-d\fR or \fB-e\fR switch, to either de- or encrypt the following messages respectively with a given shift value.
+.PP
+\fI3rd Form\fR: If the the message to be encoded resides inside a file, then caesarcipher can be invoked with the \fB-d\fR or \fB-e\fR and \fB-i inputfile\fR switches. If the \fB-o outputfile\fR is specified as well, then the decoded or encoded message is written to outputfile as specified with \fB-o\fR.
+.PP
+.SH OPTIONS
+.TP
+.B -d, --decrypt
+decrypt the message or inputfile
+.TP
+.B -e, --encrypt
+encrypt the message or inputfile
+.TP
+.B -h, --help
+print a help message and exit
+.TP
+.BR "-i, --inputfile="inputfile
+read from the following input file
+.TP
+.BR "-o, --outputfile="inputfile
+write to the following outputfile
+.TP
+.BR "-s, --shift="shiftvalue
+set the shiftvalue
+.SH THEORY
+.PP
+The cipher works by shifting the characters in the original message by a certain number, to create a new encrypted message.
+.PP
+Take for example the letters from A-Z (the original alphabet), and another alphabet (the shifted alphabet), in which each letter has been shifted (adding) by the number 5 (the encryption key):
+.PP
+.B	Original Alphabet:		Shifted Alphabet:
+.br
+		A					F
+.br
+		B					G
+.br
+		C					H
+.br
+		D					I
+.br
+		E					J
+.br
+		F					K
+.br
+		G					L
+.br
+		H					M
+.br
+		I					N
+.br
+		J					O
+.br
+		K					P
+.br
+		L					Q
+.br
+		M					R
+.br
+		N					S
+.br
+		O					T
+.br
+		P					U
+.br
+		Q					V
+.br
+		R					W
+.br
+		S					X
+.br
+		T					Y
+.br
+		U					Z
+.br
+		V					A
+.br
+		W					B
+.br
+		X					C
+.br
+		Y					D
+.br
+		Z					E
+.PP
+Suppose now, that the message to encrypt is:
+.B "THIS IS THE SECRET MESSAGE"
+.PP
+By making use of the above substitution, every character gets shifted by 5 as in the shifted alphabet.
+.PP
+The encrypted message therefore becomes:
+.B "YMNX NX YMJ XJHWJY RJXXFLJ"
+.PP
+To decrypt the message, knowledge of the shift value/encryption key is required. Decryption works shifting backwards (subtracting) the given encryption key from every letter, thereby obtaining the original message.
+.PP
+Whereas the classical Caesar cipher only used capital letters from A-Z, as in the example above, this implementation is capable of mapping all displayable ASCII characters (Hex 20 - Hex 7E).
+.PP
+Note however, that caesarcipher should
+.B not be used for serious encryption purposes,
+as the algorithm is not inherently safe.
+.PP
+The Caesar cipher has been named after Julius Caesar (100 BC - 44 BC).
+.SH BUGS
+Please report when found.
+.SH AUTHOR
+Oliver Mahmoudi (contact@olivermahmoudi.com)
