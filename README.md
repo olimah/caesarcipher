@@ -1,8 +1,4 @@
-README for caesarcipher
+README for caesarcipher:
 
-caesarcipher is an implementation of the traditional Caesar Cipher Encryption Algorithm with an extension to all
-ASCII characters.
-
-It is written in the C programing language.
-
-In it's current form, caesarcipher can be run but is not yet intact.
+caesarcipher is an implementation of the traditional Caesar Cipher encryption algorithm with an extension to all printable
+ASCII characters. It has been written in C and is released under a BSD License.
