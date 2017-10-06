@@ -4,14 +4,14 @@
 .SH NAME
 caesarcipher \- Caesar cipher cryptography tool
 .SH SYNOPSIS
-.BR "caesarcipher " "[-d || -e [-s shiftvalue] [-i inputfile] [-o outputfile] message ...]"
+.BR "caesarcipher " "[-d|-e] [-p] [-s shiftvalue] [-i inputfile] [-o outputfile] message ...]"
 .SH DESCRIPTION
 caesarcipher is an implementation of the Caesar cipher algorithm over the entire set of printable ASCII characters.
 .PP
 .B \fIProgram Invocation\fR:
-caesarcipher can be invoked in the folloging three forms:
+caesarcipher can be invoked in the following three forms:
 .PP
-\fI1st Form\fR: If invoked with no other arguments, than a possible shiftvalue \fB-s\fR, the user is placed into a shell like command line enviroment, in which he can enter messages to be decrypted or encrypted.
+\fI1st Form\fR: If invoked with no arguments, other than a possible shiftvalue \fB-s\fR or \fB-p\fR, the user is placed into a shell like command line enviroment, in which he can enter messages to be decrypted or encrypted.
 .PP
 The "caesarcipher shell" which identifies itself by:
 .B "cc>"
@@ -32,6 +32,8 @@ knows the following commands:
 .TP
 .BR 	shift " - set a new shiftvalue."
 .TP
+.BR		spaces " - turn preserve spaces on/off."
+.TP
 .BR 	quit " - quit caesarcipher (same as exit)."
 .PP
 \fI2nd Form\fR: In this form, the utility is invoked with either the \fB-d\fR or \fB-e\fR switch, to decrypt or encrypt messages passed on the command line with a given shift value \fB-s\fR.
@@ -50,18 +52,21 @@ encrypt the message or inputfile
 print a help message and exit
 .TP
 .BR "-i, --inputfile="inputfile
-read from the following input file
+read from inputfile
 .TP
-.BR "-o, --outputfile="inputfile
-write to the following outputfile
+.BR "-o, --outputfile="outputfile
+write to outputfile
+.TP
+.B -p, --preserve
+preserve spaces when decoding/encoding
 .TP
 .BR "-s, --shift="shiftvalue
 set the shiftvalue
 .SH THEORY
 .PP
-The cipher works by shifting the characters in the original message by a certain number, to create a new encrypted message.
+The cipher works by shifting the characters in the original message by a certain number, thus creating a new encrypted message.
 .PP
-Take for example the letters from A-Z (the original alphabet), and another alphabet (the shifted alphabet), in which each letter has been shifted (adding) by the number 5 (the encryption key):
+Take for example the letters from A-Z (original alphabet), and another alphabet (shifted alphabet), in which each letter has been shifted by the number 5 (shift value):
 .PP
 .B	Original Alphabet:		Shifted Alphabet:
 .br
@@ -134,7 +139,20 @@ Note however, that caesarcipher should
 as the algorithm is not inherently safe.
 .PP
 The Caesar cipher has been named after Julius Caesar (100 BC - 44 BC).
+.SH EXAMPLES
+.PP
+1. Encode the message: "Secret Message" with a shift value of 21 and write it to stdout.
+.PP
+caesarcipher -e -s 21 "Secret Message"
+.PP
+2. Decode the string "123456789" with a shift value of 1.
+.PP
+caesarcipher -d -s 1 123456789
+.PP
+3. Encode the message in the file orig.txt and write it to encrypted.txt with a shift value of -179 and preserve spaces.
+.PP
+caesarcipher -e -s -179 -p -i ~/orig.txt -o ~/encrypted.txt
 .SH BUGS
-Please report when found.
+While encrypting, a character may be transformed into a space. When decrypting this character with an activated -p switch, the space will be preserved, which is undesired behaviour.
 .SH AUTHOR
 Oliver Mahmoudi (contact@olivermahmoudi.com)
