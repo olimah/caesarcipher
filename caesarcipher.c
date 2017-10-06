@@ -34,12 +34,12 @@
 #define LOWER 32
 #define UPPER 126
 #define	LOOP (UPPER-LOWER+1)
-#define OPTSTRING "dehi:o:s:"
+#define OPTSTRING "dehi:o:ps:"
 #define MAXINPUT 1024
 
 long long int shift;
 char *file_to_read = NULL , *file_to_write = NULL;
-int i;
+int pflag;
 
 /* Functions */
 void write_to_file(char *file_to_read, char *file_to_write, char *_operation, long long int _shift);
@@ -82,7 +82,7 @@ void usage();
 void
 write_to_file(char *file_to_read, char *file_to_write, char *_operation, long long int _shift)
 {
-	int i, n, shift, shifted_char;
+	int n, shift, shifted_char;
 	FILE *fp_read, *fp_write;
 
 	shift = _shift % LOOP;	
@@ -112,6 +112,12 @@ write_to_file(char *file_to_read, char *file_to_write, char *_operation, long lo
 				else
 					putc(n, stdout);
 			}
+			else if (n == ' ' && pflag == 1) {
+				if (file_to_write != NULL)
+					putc(n, fp_write);
+				else
+					putc(n, stdout);
+			}
 			else {
 				shifted_char = n - shift;
 
@@ -134,6 +140,12 @@ write_to_file(char *file_to_read, char *file_to_write, char *_operation, long lo
 	else if (strcmp(_operation, "encrypt") == 0) {
 		while ((n = fgetc(fp_read)) != EOF ) {
 			if (n == '\n') {
+				if (file_to_write != NULL)
+					putc(n, fp_write);
+				else
+					putc(n, stdout);
+			}
+			else if (n == ' ' && pflag == 1) {
 				if (file_to_write != NULL)
 					putc(n, fp_write);
 				else
@@ -174,7 +186,7 @@ print_ascii_table()
 void
 print_commands()
 {
-	printf("Casearcipher commands:\n");
+	printf("casearcipher commands:\n");
 	printf("ascii - print ascii table\n");
 	printf("decrypt - decrypt a message\n");
 	printf("encrypt - encrypt a message\n");
@@ -182,6 +194,7 @@ print_commands()
 	printf("print - print shift table\n");
 	printf("quit - quit caesarciper\n");
 	printf("shift - set a new shift value\n");
+	printf("spaces - turn preserve spaces on/off\n");
 	printf("help - print this help menu\n");
 }
 
@@ -238,7 +251,10 @@ encode_message(char *_message, long long int _shift)
 		if(shifted_char > UPPER)
 			shifted_char = shifted_char - LOOP;
 
-		printf("%c", shifted_char);
+		if (message[i] == ' ' && pflag == 1)
+			putchar(' ');
+		else
+			printf("%c", shifted_char);
 	}
 	putchar('\n');
 }
@@ -276,7 +292,10 @@ decode_message(char *_message, long long int _shift)
 				shifted_char = LOOP + shifted_char;
 		}
 
-		printf("%c", shifted_char);
+		if (message[i] == ' ' && pflag == 1)
+			putchar(' ');
+		else
+			printf("%c", shifted_char);
 	}
 	putchar('\n');
 }
@@ -289,9 +308,16 @@ cc_shell()
 	char usermessage[MAXINPUT]; /* this gets passed to *message */
 	char *message = NULL;		/* message to be decoded/encoded */
 	char *str, *endptr;			/* for strtoll */
+	int i;
 
-	printf("Welcome to Caesar Cipher!\n");
+	printf("Welcome to caesarcipher!\n");
 	printf("Using a shift value of: %d\n", shift);
+	
+	if(pflag == 0)
+		printf("Spaces will be decoded/encoded.\n");
+	else
+		printf("Spaces will be preserved.\n");
+
 	printf("Enter 'help' to see a list of commands. Enter 'exit' to quit.\n");
 	for (;;) {
 		printf("cc> ");
@@ -454,11 +480,21 @@ cc_shell()
 			str = shiftval;
 			shift = strtoll(str, &endptr, 10);
 		}
+		else if ((strcmp(userinput, "spaces")) == 0) {
+			if (pflag == 0) {
+				pflag = 1;
+				printf("Spaces will be preserved when decoding/encoding.\n");
+			}
+			else {
+				pflag = 0;
+				printf("Spaces will be decoded/encoded.\n");
+			}
+		}
 		else
 			printf("unkown command\n");
 	} /* for (;;) */
 
-	printf("Quitting ceasar cipher\n");
+	printf("Quitting ceasarcipher\n");
 	exit(EXIT_SUCCESS);
 }
 
@@ -466,7 +502,7 @@ void
 usage()
 {
 	printf("usage:\n");
-	printf("caesarcipher [-d || -e [-s shiftvalue] [-i input_file] [-o output_file] [message]]\n");
+	printf("caesarcipher [-d|-e] [-p] [-s shiftvalue] [-i input_file] [-o output_file] [message ...]\n");
 }
 
 int
@@ -474,7 +510,7 @@ main(int argc, char *argv[])
 {
 	int opt, dflag, eflag, iflag, oflag;
 
-	i = shift = dflag = eflag = iflag = oflag = 0;
+	pflag = shift = dflag = eflag = iflag = oflag = 0;
 
 	while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
 		switch(opt) {
@@ -499,6 +535,9 @@ main(int argc, char *argv[])
 		case 's':
 			shift = atoi(optarg);
 			break;
+		case 'p':
+			pflag = 1;
+			break;
 		default:
 			usage();
 			return(EXIT_FAILURE);
@@ -518,14 +557,14 @@ main(int argc, char *argv[])
 	else if ((dflag == 0) && (eflag == 0) && (optind == argc))
 		cc_shell();
 	else if ((dflag == 1) && (optind < argc)) {
-		printf("Welcome to Caesar Cipher!\n");
+		printf("Welcome to caesarcipher!\n");
 		while (optind < argc)
 			decode_message(argv[optind++], shift);
 
 		return(EXIT_SUCCESS);
 	} 
 	else if ((eflag == 1) && (optind < argc)) {
-		printf("Welcome to Caesar Cipher!\n");
+		printf("Welcome to caesarcipher!\n");
 		while (optind < argc)
 			encode_message(argv[optind++], shift);
 
