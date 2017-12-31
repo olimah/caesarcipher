@@ -52,7 +52,7 @@ void cc_shell();
 void usage();
 
 /*
- * As far as our cypher operations are concerned, there are four possibilitites here:
+ * As far as our cypher operations are concerned, there are four possibilities here:
  *
  * 1. The shift value is positive and we are encrypting:
  * Take the modulus of the shift value and the LOOP. When encrypting, there is a chance,
