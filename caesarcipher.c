@@ -124,7 +124,7 @@ write_to_file(char *file_to_read, char *file_to_write, char *_operation, long lo
 			if(shifted_char < LOWER) {
 				if(shifted_char < 0) {
 					shifted_char = shifted_char * (-1);
-					shifted_char = LOOP - shifted_char;			
+					shifted_char = LOOP - shifted_char;
 				}
 				else
 					shifted_char = LOOP + shifted_char;
@@ -286,7 +286,7 @@ decode_message(char *_message, long long int _shift)
 		if(shifted_char < LOWER) {
 			if(shifted_char < 0) {
 				shifted_char = shifted_char * (-1);
-				shifted_char = LOOP - shifted_char;				
+				shifted_char = LOOP - shifted_char;
 			}
 			else
 				shifted_char = LOOP + shifted_char;
