@@ -4,4 +4,4 @@ caesarcipher is an implementation of the traditional Caesar cipher encryption al
 
 See the manpage for further information and capabilities.
 
-caesarcipher is Copyright (c) 2016-2017 by Oliver Mahmoudi
+caesarcipher is Copyright (c) 2016-2020 by Oliver Mahmoudi
