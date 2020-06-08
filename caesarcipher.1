@@ -1,24 +1,24 @@
 ." Manpage for caesarcipher
 .".RI [ underlined ]
-.TH caesarcipher 1 "February 2017" "caesarcipher 1.0" "Manpage for caesarcipher"
+.TH caesarcipher 1 "June 2020" "caesarcipher 1.1" "Manpage for caesarcipher"
 .SH NAME
 caesarcipher \- Caesar cipher cryptography tool
 .SH SYNOPSIS
-.BR "caesarcipher " "[-d|-e] [-p] [-s shiftvalue] [-i inputfile] [-o outputfile] message ...]"
+.BR "caesarcipher " "[-d|-e] [-p] [-s shiftvalue] [-i inputfile] [-o outputfile] [message ...]"
 .SH DESCRIPTION
-caesarcipher is an implementation of the Caesar cipher algorithm over the entire set of printable ASCII characters.
+caesarcipher is an implementation of the Caesar cipher encryption algorithm extended over the entire set of printable ASCII characters.
 .PP
 .B \fIProgram Invocation\fR:
 caesarcipher can be invoked in the following three forms:
 .PP
-\fI1st Form\fR: If invoked with no arguments, other than a possible shiftvalue \fB-s\fR or \fB-p\fR, the user is placed into a shell like command line enviroment, in which he can enter messages to be decrypted or encrypted.
+\fI1st Form\fR: If invoked with no arguments, other than a possible shiftvalue \fB-s\fR or the \fB-p\fR option, the user is placed into a shell like command line enviroment, in which he can enter messages to be decrypted or encrypted.
 .PP
 The "caesarcipher shell" which identifies itself by:
 .B "cc>"
-knows the following commands:
+understands the following commands:
 .PP
 .TP
-.BR 	ascii " - print the ascii table."
+.BR 	ascii " - print the ASCII table."
 .TP
 .BR 	decrypt " - decrypt the message in the message buffer or specify a new one."
 .TP
@@ -28,9 +28,9 @@ knows the following commands:
 .TP
 .BR 	help " - print the command menu."
 .TP
-.BR		print " - print the current shift table."
+.BR		shifttable " - print the current shift table."
 .TP
-.BR 	shift " - set a new shiftvalue."
+.BR 	shiftvalue " - set a new shiftvalue."
 .TP
 .BR		spaces " - turn preserve spaces on/off."
 .TP
@@ -57,16 +57,16 @@ read from inputfile
 .BR "-o, --outputfile="outputfile
 write to outputfile
 .TP
-.B -p, --preserve
+.B -p, --preserve-spaces
 preserve spaces when decoding/encoding
 .TP
-.BR "-s, --shift="shiftvalue
+.BR "-s, --shiftvalue="shiftvalue
 set the shiftvalue
 .SH THEORY
 .PP
 The cipher works by shifting the characters in the original message by a certain number, thus creating a new encrypted message.
 .PP
-Take for example the letters from A-Z (original alphabet), and another alphabet (shifted alphabet), in which each letter has been shifted by the number 5 (shift value):
+Take for example the letters from A-Z (original alphabet), and another alphabet (shifted alphabet), in which each letter has been shifted by the number 5 (shiftvalue):
 .PP
 .B	Original Alphabet:		Shifted Alphabet:
 .br
@@ -125,14 +125,14 @@ Take for example the letters from A-Z (original alphabet), and another alphabet 
 Suppose now, that the message to encrypt is:
 .B "THIS IS THE SECRET MESSAGE"
 .PP
-By making use of the above substitution, every character gets shifted by 5 as in the shifted alphabet.
+By making use of the above substitution table, every character of the original message can be mapped to a corresponding character in the shifted alphabet.
 .PP
 The encrypted message therefore becomes:
 .B "YMNX NX YMJ XJHWJY RJXXFLJ"
 .PP
-To decrypt the message, knowledge of the shift value/encryption key is required. Decryption works shifting backwards (subtracting) the given encryption key from every letter, thus obtaining the original message.
+To decrypt a message, knowledge of the shiftvalue (encryption key) is required. Decryption works by reverse shifting (subtracting) the given encryption key from every letter, thus obtaining the original message.
 .PP
-Whereas the classical Caesar cipher only used capital letters from A-Z, as in the example above, this implementation is capable of mapping all displayable ASCII characters (Hex 20 - Hex 7E).
+Whereas the classical Caesar cipher only used capital letters from A-Z, as in the example above, this implementation is capable of transforming all displayable ASCII characters (Hex 20 - Hex 7E).
 .PP
 Note however, that caesarcipher should
 .B not be used for serious encryption purposes,
@@ -152,7 +152,5 @@ caesarcipher -d -s 1 123456789
 3. Encode the message in the file orig.txt and write it to encrypted.txt with a shift value of -179 and preserve spaces.
 .PP
 caesarcipher -e -s -179 -p -i ~/orig.txt -o ~/encrypted.txt
-.SH BUGS
-While encrypting, a character may be transformed into a space. When decrypting this character with an activated -p switch, the space will be preserved, which is undesired behaviour.
 .SH AUTHOR
 Oliver Mahmoudi (contact@olivermahmoudi.com)
