@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017 Oliver Mahmoudi
+ * Copyright (c) 2016-2020 Oliver Mahmoudi
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,25 +29,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <getopt.h>
 
 #define LOWER 32
 #define UPPER 126
 #define	LOOP (UPPER-LOWER+1)
 #define OPTSTRING "dehi:o:ps:"
 #define MAXINPUT 1024
+#define ENCRYPT "encrypt"
+#define DECRYPT "decrypt"
 
-long long int shift;
-char *file_to_read = NULL , *file_to_write = NULL;
+int shiftval;
+FILE *fp_read = NULL, *fp_write = NULL;
 int pflag;
 
-/* Functions */
-void write_to_file(char *file_to_read, char *file_to_write, char *_operation, long long int _shift);
+void read_write_file(char *);
+int encrypt_char(int, int);
+int decrypt_char(int, int);
+void print_shift_table();
 void print_ascii_table();
 void print_commands();
-void print_shift_table(long long int _shift);
-void encode_message(char *_message, long long int _shift);
-void decode_message(char *_message, long long int _shift);
+void get_input(char *);
 void cc_shell();
 void usage();
 
@@ -55,120 +57,113 @@ void usage();
  * As far as our cypher operations are concerned, there are four possibilities here:
  *
  * 1. The shift value is positive and we are encrypting:
- * Take the modulus of the shift value and the LOOP. When encrypting, there is a chance,
- * that we count above the UPPER boundary. In this case, subtract the LOOP value from
- * the shifted char.
+ * First take the modulus of the shift value and the LOOP to get the "natural" shift.
+ * When encrypting (adding), there is a chance, that we count above the UPPER boundary.
+ * In this case, subtract LOOP's value from the shifted char.
  *
  * 2. The shift value is positive and we are decrypting:
- * Take the modulus of the shift value and the LOOP. When decrypting (subtracting), there
- * is a chance, that we end up with a shift_value 1. below the LOWER boundary and below 
- * zero or that out shift_value is 2. below the LOWER boundary but still above or equal 
- * to zero. In case number 1. If after the initial decryption operation, shifted_char
- * is below zero, then multiply it with -1 and set shifted_char = LOOP - shifted_char.
- * In case number 2. If after the initial decryption operation, shifted_char is above or
- * equal to zero, then set shifted_char = LOOP + shifted_char.
+ * First take the modulus of the shift value and the LOOP to get the "natural" shift.
+ * When decrypting (subtracting), there is a chance, that we end up with a shifted_char
+ * below the LOWER boundary. When this is the case, add LOOP to shifted char, i.e. set:
+ * shifted_char = LOOP + shifted_char.
  *
  * 3. The shift value is negative and we are encrypting:
- * In this case, take the modulus of the negative shift value and the LOOP. Then multiply
- * the (still) negative shift value with -1 and subtract it from the LOOP value. Afterwards
- * continue as you would, if a positive shift value has been passed. See 1.
+ * Obtain the "natural" shift value by taking the modulus of the negative shift value
+ * and the LOOP. Now add the negative shift value to LOOP's value and assign the result
+ * to shift. From here on, continue as you would, if a positive shift value has been
+ * passed. See 1.
  *
  * 4. The shift value is negative and we are decrypting:
- * In this case, take the modulus of the negative shift value and the LOOP. Then multiply
- * the (still) negative shift value with -1 and subtract it from the LOOP value. Afterwards
- * continue as you would, if a positive shift value has been passed. See 2.
+ * Take the modulus of the negative shift value and the LOOP to get the "natural" shift.
+ * Add the negative shift value to LOOP value and write the result back to shift. Now
+ * continue as you would, if a positive shift value had been passed. See 2.
  */
 
 void
-write_to_file(char *file_to_read, char *file_to_write, char *_operation, long long int _shift)
+read_write_file(char *_operation)
 {
-	int n, shift, shifted_char;
-	FILE *fp_read, *fp_write;
+	int ch;
 
-	shift = _shift % LOOP;	
-
-	if (shift < 0) {
-		shift = shift*(-1);
-		shift = LOOP-shift;
-	}
-
-	if ((fp_read = fopen(file_to_read, "r")) == NULL) {
-		printf("error opening file: %s", file_to_read);
-		exit(EXIT_FAILURE);
-	}
-	
-	if (file_to_write != NULL) {
-		if ((fp_write = fopen(file_to_write, "w")) == NULL) {
-			printf("error opening file: %s", file_to_write);
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if (strcmp(_operation, "decrypt") == 0) {
-		while ((n = fgetc(fp_read)) != EOF ) {
-			if (n == '\n') {
-				if (file_to_write != NULL)
-					putc(n, fp_write);
+	if (!strcmp(_operation, DECRYPT)) {
+		while ((ch = fgetc(fp_read)) != EOF )
+			if (ch == '\n') {
+				if (fp_write)
+					putc(ch, fp_write);
 				else
-					putc(n, stdout);
-			}
-			else if (n == ' ' && pflag == 1) {
-				if (file_to_write != NULL)
-					putc(n, fp_write);
+					putc(ch, stdout);
+			} else {
+				if (fp_write)
+					putc(decrypt_char(ch, shiftval), fp_write);
 				else
-					putc(n, stdout);
+					putc(decrypt_char(ch, shiftval), stdout);
 			}
-			else {
-				shifted_char = n - shift;
-
-			if(shifted_char < LOWER) {
-				if(shifted_char < 0) {
-					shifted_char = shifted_char * (-1);
-					shifted_char = LOOP - shifted_char;
-				}
+	} else if (!strcmp(_operation, ENCRYPT)) {
+		while ((ch = fgetc(fp_read)) != EOF )
+			if (ch == '\n') {
+				if (fp_write)
+					putc(ch, fp_write);
 				else
-					shifted_char = LOOP + shifted_char;
-			}
-
-			if (file_to_write != NULL)
-				putc(shifted_char, fp_write);
-			else
-				putc(shifted_char, stdout);
-			}
-		}
-	}
-	else if (strcmp(_operation, "encrypt") == 0) {
-		while ((n = fgetc(fp_read)) != EOF ) {
-			if (n == '\n') {
-				if (file_to_write != NULL)
-					putc(n, fp_write);
+					putc(ch, stdout);
+			} else {
+				if (fp_write)
+					putc(encrypt_char(ch, shiftval), fp_write);
 				else
-					putc(n, stdout);
+					putc(encrypt_char(ch, shiftval), stdout);
 			}
-			else if (n == ' ' && pflag == 1) {
-				if (file_to_write != NULL)
-					putc(n, fp_write);
-				else
-					putc(n, stdout);
-			}
-			else {
-				shifted_char = n + shift;
-
-				if(shifted_char > UPPER)
-					shifted_char = shifted_char - LOOP;
-
-				if (file_to_write != NULL)
-					putc(shifted_char, fp_write);
-				else
-					putc(shifted_char, stdout);
-			}
-		}
 	}
 
 	fclose(fp_read);
 
-	if (file_to_write != NULL)
+	if (fp_write)
 		fclose(fp_write);
+}
+
+int
+encrypt_char(int _chartoenc, int _shiftval)
+{
+	int chartoenc, shifted_char;
+
+	chartoenc = _chartoenc;
+
+	if (chartoenc == ' ' && pflag)
+		return chartoenc;
+
+	_shiftval = _shiftval % LOOP;
+
+	/* Maybe we were passed a negative shiftvalue. */
+	if (_shiftval < 0)
+		_shiftval = LOOP + _shiftval;
+
+	shifted_char = chartoenc + _shiftval;
+
+	if(shifted_char > UPPER)
+		shifted_char = shifted_char - LOOP;
+
+	return shifted_char;
+}
+
+int
+decrypt_char(int _chartodec, int _shiftval)
+{
+	int chartodec, shifted_char;
+
+	chartodec = _chartodec;
+
+	if (chartodec == ' ' && pflag)
+		return chartodec;
+
+	_shiftval = _shiftval % LOOP;
+
+	/* Maybe we were passed a negative shiftvalue. */
+	if (_shiftval < 0)
+		_shiftval = LOOP + _shiftval;
+
+	shifted_char = chartodec - _shiftval;
+
+	if(shifted_char < LOWER)
+		shifted_char = LOOP + shifted_char;
+
+	return shifted_char;
 }
 
 void
@@ -176,325 +171,114 @@ print_ascii_table()
 {
 	int i;
 
-	printf("Printing standard ascii table\n");
-	printf("Decimcal:\t\t\tHex:\t\t\tAscii:\n");
-	for(i=32; i <= 126; i++) {
-		printf("%9d\t\t\t%2x\t\t\t%5c\n",i,i,i);
-	}
+	printf("Printing standard ASCII table\n");
+	printf("Decimcal:\t\t\tHex:\t\t\tASCII:\n");
+	for(i = LOWER; i <= UPPER; i++)
+		printf("%9d\t\t\t%2x\t\t\t%5c\n", i, i, i);
 }
 
 void
 print_commands()
 {
-	printf("casearcipher commands:\n");
-	printf("ascii - print ascii table\n");
+	printf("caesarcipher commands:\n");
+	printf("ascii - print ASCII table\n");
 	printf("decrypt - decrypt a message\n");
 	printf("encrypt - encrypt a message\n");
-	printf("message - specify a message to decrypt/encrypt\n");
-	printf("print - print shift table\n");
-	printf("quit - quit caesarciper\n");
-	printf("shift - set a new shift value\n");
+	printf("shifttable - print shift table\n");
+	printf("shiftvalue - set a new shiftvalue\n");
 	printf("spaces - turn preserve spaces on/off\n");
 	printf("help - print this help menu\n");
+	printf("quit - quit caesarciper\n");
 }
 
 void
-print_shift_table(long long int _shift)
+print_shift_table()
 {
-	int i, shift, shift_val, shift_val_new;
+	int i;
 
-	printf("Original:\t\tShifted by %lli:\n", _shift);
+	printf("Original:\t\tShifted by %d:\n", shiftval);
 
-	shift_val_new = LOWER;
-	shift = _shift % LOOP;
-	shift_val = shift;
-
-	for(i=LOWER; i <= UPPER; i++) {
-		shift_val = i + shift_val;
-
-		if(shift_val > UPPER) {
-			printf("%c\t\t\t%c\n", i, shift_val_new);
-			shift_val_new++;
-		}
-		else {
-			printf("%c\t\t\t%c\n", i, shift_val);
-			/* reset shift_val to its original value for the next execution */
-			shift_val = shift;
-		}
-	}
+	for(i = LOWER; i <= UPPER; i++)
+		printf("%c\t\t\t%c\n", i, encrypt_char(i, shiftval));
 }
 
 void
-encode_message(char *_message, long long int _shift)
-{
-	char *message = _message;
-	int i, shift, shifted_char;
+get_input(char *_input) {
+	int i = 0;
 
-	shift = _shift % LOOP;
+	fgets(_input, MAXINPUT, stdin);
 
-	/*
-	 * Maybe we were passed a negative _shift value.
-	 */
-
-	if (shift < 0) {
-		shift = shift*(-1);
-		shift = LOOP-shift;
-	}
-
-	putchar('\n');
-	printf("Encoding message with a shiftvalue of: %lli\n", _shift);
-	printf("The original message is:\n%s\n", message);
-	printf("The encoded message is:\n");
-	for(i = 0; i < strlen(message); i++) {
-		shifted_char = message[i] + shift;
-
-		if(shifted_char > UPPER)
-			shifted_char = shifted_char - LOOP;
-
-		if (message[i] == ' ' && pflag == 1)
-			putchar(' ');
-		else
-			printf("%c", shifted_char);
-	}
-	putchar('\n');
-}
-
-void
-decode_message(char *_message, long long int _shift)
-{
-	char *message = _message;
-	int i, shift, shifted_char;
-
-	shift = _shift % LOOP;
-
-	/*
-	 * Maybe we were passed a negative _shift value.
-	 */ 
-
-	if (shift < 0) {
-		shift = shift*(-1);
-		shift = LOOP-shift;
-	}
-
-	putchar('\n');
-	printf("Decoding message with a shiftvalue of: %lli\n", _shift);
-	printf("The encoded message is:\n%s\n", message);
-	printf("The decoded message is:\n");
-	for(i = 0; i < strlen(message); i++) {
-		shifted_char = message[i] - shift;
-
-		if(shifted_char < LOWER) {
-			if(shifted_char < 0) {
-				shifted_char = shifted_char * (-1);
-				shifted_char = LOOP - shifted_char;
-			}
-			else
-				shifted_char = LOOP + shifted_char;
-		}
-
-		if (message[i] == ' ' && pflag == 1)
-			putchar(' ');
-		else
-			printf("%c", shifted_char);
-	}
-	putchar('\n');
+	/* Eliminate the newline so we can process the argument. */
+	while(_input[i] != '\n')
+		i++;
+	_input[i] = '\0';
 }
 
 void
 cc_shell()
 {
-	char shiftval[MAXINPUT];	/* convert userinput via fgets */
-	char userinput[MAXINPUT];	/* command to be run */
-	char usermessage[MAXINPUT]; /* this gets passed to *message */
-	char *message = NULL;		/* message to be decoded/encoded */
-	char *str, *endptr;			/* for strtoll */
 	int i;
+	char shiftvalstr[MAXINPUT];
+	char userinput[MAXINPUT];	/* command to be run */
+	char message[MAXINPUT]; 	/* message to be encrypted/decrypted */
 
 	printf("Welcome to caesarcipher!\n");
-	printf("Using a shift value of: %d\n", shift);
+	printf("Using a shift value of: %d\n", shiftval);
 	
-	if(pflag == 0)
-		printf("Spaces will be decoded/encoded.\n");
+	if(!pflag)
+		printf("Spaces will be encrypted/decrypted.\n");
 	else
-		printf("Spaces will be preserved.\n");
+		printf("Spaces will not be encrypted/decrypted.\n");
 
 	printf("Enter 'help' to see a list of commands. Enter 'exit' to quit.\n");
 	for (;;) {
 		printf("cc> ");
-		fgets(userinput, MAXINPUT, stdin);
-
-		/* 
-		 * Reset counter and eliminate the newline so we can process the argument
-		 */		
-
-		i = 0; 
-		while(userinput[i] != '\n')
-			i++;
-
-		userinput[i] = '\0';
+		get_input(userinput);
 
 		/*
  		 * Process our argument and call the corresponding function
  		 */
-
-		if ((strcmp(userinput, "ascii")) == 0) {
+		if (!(strcmp(userinput, "ascii"))) {
 			print_ascii_table();
-		}
-		else if ((strcmp(userinput, "help")) == 0) {
-			print_commands();
-		}
-		else if ((strcmp(userinput, "decrypt")) == 0) {
-			if (message == NULL) {
-				printf("Please specify a message to decrypt: \n");
-				fgets(usermessage, MAXINPUT, stdin);
-				i = 0; 
-				while(usermessage[i] != '\n')
-					i++;
-
-				usermessage[i] = '\0';
-				message = usermessage;
-			}
-			else {
-				printf("You are about to decrypt the following message with a shiftvalue of: %lli\n", shift);
-				printf("%s\n", usermessage);
-				do {
-					printf("Proceed (y/n)? ");
-					fgets(userinput, MAXINPUT, stdin);
-					i = 0; 
-					while(userinput[i] != '\n')
-						i++;
-
-					userinput[i] = '\0';
-				} while (((strcmp(userinput, "y")) != 0) && ((strcmp(userinput, "n")) != 0) 
-						&& ((strcmp(userinput, "yes")) != 0) && ((strcmp(userinput, "no")) != 0)
-						&& ((strcmp(userinput, "Yes")) != 0) && ((strcmp(userinput, "No")) != 0));
-
-				if ((strcmp(userinput, "y")) == 0)
-					message = usermessage;
-				else {
-					/*
-					 * The user chose "no". Let him enter a new message.
-					 */
-
-					printf("Please specify a message to decrypt: \n");
-					fgets(usermessage, MAXINPUT, stdin);
-					i = 0; 
-					while(usermessage[i] != '\n')
-						i++;
-
-					usermessage[i] = '\0';
-					message = usermessage;
-
-					/*
-					 * We also require the user to set a new shift value.
-					 */
-
-					printf("Set the new shift value: ");
-					fgets(shiftval, MAXINPUT, stdin);
-					str = shiftval;
-					shift = strtoll(str, &endptr, 10);
-				}
-
-			}
-			decode_message(message, shift);
-		}
-		else if ((strcmp(userinput, "encrypt")) == 0) {
-			if (message == NULL) {
-				printf("Please specify a message to encrypt: \n");
-				fgets(usermessage, MAXINPUT, stdin);
-				i = 0; 
-				while(usermessage[i] != '\n')
-					i++;
-
-				usermessage[i] = '\0';
-				message = usermessage;
-			}
-			else {
-				printf("You are about to encrypt the following message with a shiftvalue of: %lli\n", shift);
-				printf("%s\n", usermessage);
-
-				do {
-					printf("Proceed (y/n)? ");
-					fgets(userinput, MAXINPUT, stdin);
-					i = 0; 
-
-					while(userinput[i] != '\n')
-						i++;
-
-					userinput[i] = '\0';
-				} while (((strcmp(userinput, "y")) != 0) && ((strcmp(userinput, "n")) != 0) 
-						&& ((strcmp(userinput, "yes")) != 0) && ((strcmp(userinput, "no")) != 0)
-						&& ((strcmp(userinput, "Yes")) != 0) && ((strcmp(userinput, "No")) != 0));
-
-				if ((strcmp(userinput, "y")) == 0)
-					message = usermessage;
-				else {
-
-					/*
-					 * The user chose "no". Let him enter a new message.
-					 */
-
-					printf("Please specify a message to encrypt: \n");
-					fgets(usermessage, MAXINPUT, stdin);
-					i = 0; 
-					while(usermessage[i] != '\n')
-						i++;
-
-					usermessage[i] = '\0';
-					message = usermessage;
-
-					/*
-					 * We also require the user to set a new shift value.
-					 */
-
-					printf("Set the new shift value: ");
-					fgets(shiftval, MAXINPUT, stdin);
-					str = shiftval;
-					shift = strtoll(str, &endptr, 10);
-				}
-
-			}
-			encode_message(message, shift);
-		}
-		else if ((strcmp(userinput, "message")) == 0) {
-			printf("Please specify a message: ");
-			fgets(usermessage, MAXINPUT, stdin);
-
-			i = 0; 
-			while(usermessage[i] != '\n')
-				i++;
-
-			usermessage[i] = '\0';
-			message = usermessage;
-		}
-		else if ((strcmp(userinput, "print")) == 0) {
-			print_shift_table(shift);
-		}
-		else if ((strcmp(userinput, "exit")) == 0)
-			break;
-		else if ((strcmp(userinput, "quit")) == 0)
-			break;
-		else if ((strcmp(userinput, "shift")) == 0) {
-			printf("Set the new shift value: ");
-			fgets(shiftval, MAXINPUT, stdin);
-			str = shiftval;
-			shift = strtoll(str, &endptr, 10);
-		}
-		else if ((strcmp(userinput, "spaces")) == 0) {
-			if (pflag == 0) {
+		} else if (!(strcmp(userinput, "decrypt"))) {
+			printf("Specify a message to decrypt: \n");
+			get_input(message);
+			printf("Decrypting message with a shiftvalue of: %d\n", shiftval);
+			for(i = 0; i < strlen(message); i++)
+				putchar(decrypt_char(message[i], shiftval));
+			putchar('\n');
+		} else if (!strcmp(userinput, "encrypt")) {
+			printf("Specify a message to encrypt: \n");
+			get_input(message);
+			printf("Encrypting message with a shiftvalue of: %d\n", shiftval);
+			for(i = 0; i < strlen(message); i++)
+				putchar(encrypt_char(message[i], shiftval));
+			putchar('\n');
+		} else if (!strcmp(userinput, "shifttable"))
+			print_shift_table();
+		else if (!strcmp(userinput, "spaces")) {
+			if (!pflag) {
 				pflag = 1;
-				printf("Spaces will be preserved when decoding/encoding.\n");
-			}
-			else {
+				printf("Spaces will not be encrypted/decrypted.\n");
+			} else {
 				pflag = 0;
-				printf("Spaces will be decoded/encoded.\n");
+				printf("Spaces will be encrypted/decrypted.\n");
 			}
-		}
+		} else if (!strcmp(userinput, "shiftvalue")) {
+			printf("New shiftvalue: ");
+			get_input(shiftvalstr);
+			shiftval = atoi(shiftvalstr);
+		} else if (!strcmp(userinput, ""))
+			continue;
+		else if (!strcmp(userinput, "exit") || !strcmp(userinput, "quit"))
+			break;
+		else if (!(strcmp(userinput, "help")))
+			print_commands();
 		else
 			printf("unkown command\n");
 	} /* for (;;) */
 
-	printf("Quitting ceasarcipher\n");
+	printf("Quitting caesarcipher\n");
 	exit(EXIT_SUCCESS);
 }
 
@@ -502,92 +286,103 @@ void
 usage()
 {
 	printf("usage:\n");
-	printf("caesarcipher [-d|-e] [-p] [-s shiftvalue] [-i input_file] [-o output_file] [message ...]\n");
+	printf("caesarcipher [-d|-e] [-p] [-s shiftvalue] [-i inputfile] [-o outputfile] [message ...]\n");
 }
 
 int
 main(int argc, char *argv[])
 {
-	int opt, dflag, eflag, iflag, oflag;
+	int i, opt, dflag, eflag;
 
-	pflag = shift = dflag = eflag = iflag = oflag = 0;
+	pflag = shiftval = dflag = eflag = 0;
 
-	while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
+    static struct option long_options[] = {
+  		{"decrypt",   no_argument, 0,  'd'},
+	    {"encrypt",  no_argument, 0,  'e'},
+    	{"help",  no_argument, 0,  'h'},
+  		{"inputfile",   required_argument, 0,  'i'},
+	    {"outputfile",  required_argument, 0,  'o'},
+    	{"shiftvalue",  required_argument, 0,  's'},
+    	{"preserve-spaces",  no_argument, 0,  'p'},
+	    {0, 0, 0, 0}
+    };
+
+    while((opt = getopt_long(argc, argv, OPTSTRING, long_options, NULL)) != -1) {
 		switch(opt) {
-		case 'd':
-			dflag = 1;
-			break;
-		case 'e':
-			eflag = 1;
-			break;
-		case 'h':
-			usage();			
-			return(EXIT_SUCCESS);
-			break;
-		case 'i':
-			file_to_read = optarg;
-			iflag = 1;
-			break;
-		case 'o':
-			file_to_write = optarg;
-			oflag = 1;
-			break;
-		case 's':
-			shift = atoi(optarg);
-			break;
-		case 'p':
-			pflag = 1;
-			break;
-		default:
-			usage();
-			return(EXIT_FAILURE);
+			case 'd':
+				dflag = 1;
+				break;
+			case 'e':
+				eflag = 1;
+				break;
+			case 'h':
+				usage();			
+				return(EXIT_SUCCESS);
+				break;
+			case 'i':
+				if (!(fp_read = fopen(optarg, "r"))) {
+					printf("error opening file: %s", optarg);
+					exit(EXIT_FAILURE);
+				}
+				break;
+			case 'o':
+				if (!(fp_write = fopen(optarg, "w"))) {
+					printf("error opening file: %s", optarg);
+					exit(EXIT_FAILURE);
+				}
+				break;
+			case 's':
+				shiftval = atoi(optarg);
+				break;
+			case 'p':
+				pflag = 1;
+				break;
+			default:
+				usage();
+				return(EXIT_FAILURE);
 		}
 	}
 
-	if (((dflag == 0) && (eflag == 0) && (optind < argc))) {
-		printf("Please choose to either decrypt or encrypt your message!\n");
+	if ((!dflag && !eflag && (optind < argc))) {
+		printf("Please choose to either encrypt or decrypt your message!\n");
 		usage();
+
 		return(EXIT_FAILURE);
-	}
-	else if ((dflag == 1) && (eflag == 1)) {
-		printf("Cannot decrypt and encrypt at the same time!\n");
+	} else if (dflag && eflag) {
+		printf("Cannot encrypt and decrypt at the same time!\n");
 		usage();
+
 		return(EXIT_FAILURE);
-	}
-	else if ((dflag == 0) && (eflag == 0) && (optind == argc))
+	} else if (!dflag && !eflag && (optind == argc))
 		cc_shell();
-	else if ((dflag == 1) && (optind < argc)) {
-		printf("Welcome to caesarcipher!\n");
-		while (optind < argc)
-			decode_message(argv[optind++], shift);
+	else if (dflag && (optind < argc)) {
+		while (optind < argc) {
+			for(i = 0; argv[optind][i] != '\0'; i++)
+				putchar(decrypt_char(argv[optind][i], shiftval));
+			putchar('\n');
+			optind++;
+		}
 
 		return(EXIT_SUCCESS);
-	} 
-	else if ((eflag == 1) && (optind < argc)) {
-		printf("Welcome to caesarcipher!\n");
-		while (optind < argc)
-			encode_message(argv[optind++], shift);
+	} else if (eflag && (optind < argc)) {
+		while (optind < argc) {
+			for(i = 0; argv[optind][i] != '\0'; i++)
+				putchar(encrypt_char(argv[optind][i], shiftval));
+			putchar('\n');
+			optind++;
+		}
 
 		return(EXIT_SUCCESS);
-	}
-	else if ((dflag == 1) && (iflag == 1) && (optind == argc)) {
-		if (oflag == 1)
-			write_to_file(file_to_read, file_to_write, "decrypt", shift);
-		else
-			write_to_file(file_to_read, NULL, "decrypt", shift);
+	} else if (dflag && fp_read && (optind == argc)) {
+		read_write_file(DECRYPT);
 
 		return(EXIT_SUCCESS);
-	}
-	else if ((eflag == 1) && (iflag == 1) && (optind == argc)) {
-		if (oflag == 1)
-			write_to_file(file_to_read, file_to_write, "encrypt", shift);
-		else
-			write_to_file(file_to_read, NULL, "encrypt", shift);
+	} else if (eflag && fp_read && (optind == argc)) {
+		read_write_file(ENCRYPT);
 
 		return(EXIT_SUCCESS);
-	}
-	/* NOT REACHED */
-	else {
+	} else {
+		/* NOT REACHED */
 		usage();
 		return(EXIT_FAILURE);
 	}
