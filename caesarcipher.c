@@ -31,17 +31,16 @@
 #include <string.h>
 #include <getopt.h>
 
-#define LOWER 32
-#define UPPER 126
+#define LOWER 0x20
+#define UPPER 0x7E
 #define	LOOP (UPPER-LOWER+1)
 #define OPTSTRING "dehi:o:ps:"
 #define MAXINPUT 1024
 #define ENCRYPT "encrypt"
 #define DECRYPT "decrypt"
 
-int shiftval;
+int pflag, shiftval;
 FILE *fp_read = NULL, *fp_write = NULL;
-int pflag;
 
 void read_write_file(char *);
 int encrypt_char(int, int);
@@ -86,30 +85,16 @@ read_write_file(char *_operation)
 
 	if (!strcmp(_operation, DECRYPT)) {
 		while ((ch = fgetc(fp_read)) != EOF )
-			if (ch == '\n') {
-				if (fp_write)
-					putc(ch, fp_write);
-				else
-					putc(ch, stdout);
-			} else {
-				if (fp_write)
-					putc(decrypt_char(ch, shiftval), fp_write);
-				else
-					putc(decrypt_char(ch, shiftval), stdout);
-			}
+			if (fp_write)
+				putc(decrypt_char(ch, shiftval), fp_write);
+			else
+				putc(decrypt_char(ch, shiftval), stdout);
 	} else if (!strcmp(_operation, ENCRYPT)) {
 		while ((ch = fgetc(fp_read)) != EOF )
-			if (ch == '\n') {
-				if (fp_write)
-					putc(ch, fp_write);
-				else
-					putc(ch, stdout);
-			} else {
-				if (fp_write)
-					putc(encrypt_char(ch, shiftval), fp_write);
-				else
-					putc(encrypt_char(ch, shiftval), stdout);
-			}
+			if (fp_write)
+				putc(encrypt_char(ch, shiftval), fp_write);
+			else
+				putc(encrypt_char(ch, shiftval), stdout);
 	}
 
 	fclose(fp_read);
@@ -125,7 +110,7 @@ encrypt_char(int _chartoenc, int _shiftval)
 
 	chartoenc = _chartoenc;
 
-	if (chartoenc == ' ' && pflag)
+	if (chartoenc == '\n' || chartoenc == '\t' || (chartoenc == ' ' && pflag))
 		return chartoenc;
 
 	_shiftval = _shiftval % LOOP;
@@ -149,7 +134,7 @@ decrypt_char(int _chartodec, int _shiftval)
 
 	chartodec = _chartodec;
 
-	if (chartodec == ' ' && pflag)
+	if (chartodec == '\n' || chartodec == '\t' || (chartodec == ' ' && pflag))
 		return chartodec;
 
 	_shiftval = _shiftval % LOOP;
@@ -170,7 +155,6 @@ void
 print_ascii_table()
 {
 	int i;
-
 	printf("Printing standard ASCII table\n");
 	printf("Decimcal:\t\t\tHex:\t\t\tASCII:\n");
 	for(i = LOWER; i <= UPPER; i++)
@@ -195,32 +179,27 @@ void
 print_shift_table()
 {
 	int i;
-
+	printf("Printing shifttable\n");
 	printf("Original:\t\tShifted by %d:\n", shiftval);
-
 	for(i = LOWER; i <= UPPER; i++)
 		printf("%c\t\t\t%c\n", i, encrypt_char(i, shiftval));
 }
 
 void
 get_input(char *_input) {
-	int i = 0;
-
 	fgets(_input, MAXINPUT, stdin);
 
-	/* Eliminate the newline so we can process the argument. */
-	while(_input[i] != '\n')
-		i++;
-	_input[i] = '\0';
+	/* Eliminate the newline so we can process the input. */
+	for(; *_input != '\n'; *_input++)
+		;
+	*_input = '\0';
 }
 
 void
 cc_shell()
 {
 	int i;
-	char shiftvalstr[MAXINPUT];
-	char userinput[MAXINPUT];	/* command to be run */
-	char message[MAXINPUT]; 	/* message to be encrypted/decrypted */
+	char userinput[MAXINPUT];
 
 	printf("Welcome to caesarcipher!\n");
 	printf("Using a shift value of: %d\n", shiftval);
@@ -233,26 +212,26 @@ cc_shell()
 	printf("Enter 'help' to see a list of commands. Enter 'exit' to quit.\n");
 	for (;;) {
 		printf("cc> ");
-		get_input(userinput);
 
 		/*
- 		 * Process our argument and call the corresponding function
+ 		 * Get userinput and process the command.
  		 */
-		if (!(strcmp(userinput, "ascii"))) {
+		get_input(userinput);
+		if (!strcmp(userinput, "ascii")) {
 			print_ascii_table();
-		} else if (!(strcmp(userinput, "decrypt"))) {
+		} else if (!strcmp(userinput, DECRYPT)) {
 			printf("Specify a message to decrypt: \n");
-			get_input(message);
+			get_input(userinput);
 			printf("Decrypting message with a shiftvalue of: %d\n", shiftval);
-			for(i = 0; i < strlen(message); i++)
-				putchar(decrypt_char(message[i], shiftval));
+			for(i = 0; i < strlen(userinput); i++)
+				putchar(decrypt_char(userinput[i], shiftval));
 			putchar('\n');
-		} else if (!strcmp(userinput, "encrypt")) {
+		} else if (!strcmp(userinput, ENCRYPT)) {
 			printf("Specify a message to encrypt: \n");
-			get_input(message);
+			get_input(userinput);
 			printf("Encrypting message with a shiftvalue of: %d\n", shiftval);
-			for(i = 0; i < strlen(message); i++)
-				putchar(encrypt_char(message[i], shiftval));
+			for(i = 0; i < strlen(userinput); i++)
+				putchar(encrypt_char(userinput[i], shiftval));
 			putchar('\n');
 		} else if (!strcmp(userinput, "shifttable"))
 			print_shift_table();
@@ -266,13 +245,13 @@ cc_shell()
 			}
 		} else if (!strcmp(userinput, "shiftvalue")) {
 			printf("New shiftvalue: ");
-			get_input(shiftvalstr);
-			shiftval = atoi(shiftvalstr);
+			get_input(userinput);
+			shiftval = atoi(userinput);
 		} else if (!strcmp(userinput, ""))
 			continue;
 		else if (!strcmp(userinput, "exit") || !strcmp(userinput, "quit"))
 			break;
-		else if (!(strcmp(userinput, "help")))
+		else if (!strcmp(userinput, "help"))
 			print_commands();
 		else
 			printf("unkown command\n");
