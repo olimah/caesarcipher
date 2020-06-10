@@ -1,0 +1,7 @@
+Changelog for caesarcipher:
+
+Version 1.0: Released on 12/31/2017
+
+Version 1.1: Released on 06/10/2020
+- Implemented long options.
+- Cleaned up some code.
